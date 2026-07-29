@@ -72,7 +72,91 @@ y_pred = model.predict(X_test)
 
 # ao executar o código acima quando max_inter=1000 vai dar um aviso de:
 # ConvergenceWarning: lbfgs failed to converge after 1000 iteration(s) (status=1): STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT
-# não significa que deu erro, mas que o modelo não conseguiu terminar o processo de aprendizado completamente com o número definido no max_inter porque ele não encontrou a melhor solução quando o treinamento foi interrompido, ou seja, o modelo parou porque chegou no máximo permitido, não porque chegou no máximo permitido.
-# neste caso, o que podemos fazer é aumentar a escala de interações e melhorar os dados.
+# não significa que deu erro, mas que o modelo não conseguiu terminar o processo de aprendizado completamente com o número definido no max_inter porque ele não encontrou a melhor solução quando o treinamento foi interrompido, ou seja, o modelo parou porque chegou no máximo permitido, não porque terminou de aprender.
+# neste caso, o que podemos fazer é aumentar o número de interações e melhorar a escola dos dados.
 
+# podemos ver como o modelo se saiu usando o classification_report que é onde conseguimos ver as métricas mais importantes pra nossa avaliação.
+
+from sklearn.metrics import classification_report
+print(classification_report(y_test, y_pred))
+
+#                 precision    recall  f1-score   support
+#
+#           0       1.00      1.00      1.00     85295
+#           1       0.86      0.64      0.73       148  # representa a classe 1 - fraudes
+#
+#    accuracy                           1.00     85443
+#   macro avg       0.93      0.82      0.87     85443
+# weighted avg      1.00      1.00      1.00     85443
+
+# ANALISANDO O REPORT:
+# na coluna precision, onde mostra a classe 1, podemos ver que entre todas as transações, o modelo recall classificou 86 eram fraudes
+# na reall, 64% de fraudes reais. Ponto crítico porque o modelo está deixando passar 36% de fraude
+# f1-score de 0.73 que é um equilibrio, uma média harmonica entre precisão e recall, dando uma visão geral da qualidade do modelo
+# accuracy está com 1.00 sendo 100% de acurácia. O que parece bom, mas não bate com os outros dados de precision, recall e f1-score quando interpretamos tudo junto. O accuracy pode acabar sendo alto mesmo sem detectar fraudes.
+# então, o dado mais importante é o recall com 64% de fraudes reais identificadas
+
+#----------------------
+
+# Usando outro método de avaliação: A curva ROC
+# É uma métrica muito importante em modelo de classificação
+
+
+from sklearn.metrics import roc_curve, roc_auc_score
+import matplotlib.pyplot as plt
+
+y_probs = model.predict_proba(X_test)[:,1]
+fpr, tpr, _ = roc_curve(y_test, y_probs)
+
+# O gráfico mostra o desempenho do modelo em diferentes limiares de decisão
+# Cada ponto da curva vai representar um limite diferente da decisão do modelo,dando para analisar o comportamento geral do modelo
+# Quanto mais a curva se aproxima do canto superior esquerdo, melhor é o modelo. alto recall e baixo erro
+
+plt.plot(fpr, tpr)
+plt.title("ROC Curve")
+plt.xlabel("False Positive Rate") # representa quantas transações normais foram classificadas como fraude
+plt.ylabel("True Positive Rate")  # representa o mesmo que o recall: fraudes reais identificadas
+plt.show()
+
+print("AUC:", roc_auc_score(y_test, y_probs))
+# AUC: 0.9283981824605543
+# área sobre a curva foi de 93 aproximadamente, o que significa que o modelo está muito bom, mas ainda não está perfeito.
+
+#----------------------
+
+# Precision Recall Curve
+# Ainda mais importante em problemas de fraudes desbalanceadas
+# Mostra a precisão de acertos em fraudes reais e quantas realmentesão fraudes
+# A partir do momento que o recall aumenta, o modelo começa a identificar mais fraudes
+
+from sklearn.metrics import precision_recall_curve
+
+precision, recall, _ = precision_recall_curve(y_test, y_probs)
+
+plt.plot(recall, precision)
+plt.title("Precision-Recall Curve")
+plt.xlabel("Recall")    # fraudes reais identificadas
+plt.ylabel("Precision") # precisão, quantas realmente são fraudes
+plt.show()
+
+#----------------------
+
+# Formas de balancear:
+
+# Undersampling
+# Pega todas as fraudes e seleciona a mesma quantidade de transações, ou seja, reduzimos a classe majoritária 0 para ficar do mesmo tamanho da classe minoritária que é a classe 1
+fraudes = df[df["Class"] == 1]
+normais = df[df["Class"] == 0]
+df_under = pd.concat([fraudes, normais])
+
+# Oversamping
+# Cria um dataset equilibrado com a mesma quantidade de frauses e não fraudes.
+# O modelo aprende melhor a identificar fraudes
+# O problema é que acabamos perdendo dados normais, o que reduz a qualidade do dado, ou seja, nunca é perfeito
+from imblearn.over_sampling import SMOTE
+
+# Gera dados, novas fraudes baseadas nas existentes
+# Não perde dados e ainda aumenta a representação da fraude, por outro lado, estamos criando dados artificiais, o que pode incluir ruídos
+smote = SMOTE()
+X_res, y_res = smote.fit_resample(X, y)
 
