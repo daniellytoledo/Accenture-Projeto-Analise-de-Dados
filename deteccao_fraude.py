@@ -38,7 +38,9 @@ from sklearn.preprocessing import StandardScaler
 # O standard Scaler vai transformar os dados para que tenha a média = 0 e desvio padrão = 1
 scaler = StandardScaler()
 # Criando outra variável chamada Amount_scaled com o resultado da função
-df["Amount_scaled"] = scaler.fit_transform(df["Amount"])
+df["Amount_scaled"] = scaler.fit_transform(
+    df[["Amount"]]
+)
 
 #----------------------
 
@@ -53,4 +55,24 @@ y = df["Class"]               # representa o target, o que a gente quer ver, nes
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, stratify=y, test_size=0.3, random_state=42
 )
+
+#----------------------
+
+# Prever se a transação é fraude (classe 1) ou não fraude (classe 0)
+# Por que da regressão logistíca? É um dos modelos mais simples e é geralmente usado para base line para servir de modelo para os outros. 
+# O max_inter define 1000 interações para o algoritmo convergir.
+# O model.fit é o modelo aprende padrões a partir dos dados de train, encontrando relações entre as variáveis
+# Model.predict vai fazer previsões dos dados de teste que ele nunca viu, agora é momento que ele vai olhar para os 30% de teste.
+
+from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train,y_train)
+y_pred = model.predict(X_test)
+
+# ao executar o código acima quando max_inter=1000 vai dar um aviso de:
+# ConvergenceWarning: lbfgs failed to converge after 1000 iteration(s) (status=1): STOP: TOTAL NO. OF ITERATIONS REACHED LIMIT
+# não significa que deu erro, mas que o modelo não conseguiu terminar o processo de aprendizado completamente com o número definido no max_inter porque ele não encontrou a melhor solução quando o treinamento foi interrompido, ou seja, o modelo parou porque chegou no máximo permitido, não porque chegou no máximo permitido.
+# neste caso, o que podemos fazer é aumentar a escala de interações e melhorar os dados.
+
 
