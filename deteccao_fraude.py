@@ -168,11 +168,14 @@ X_res, y_res = smote.fit_resample(X, y)
 
 from sklearn.ensemble import RandomForestClassifier
 
+# Modelo mais sofisticado, baseado em árvores de decisão.
+# É um conjunto de várias árvores de decisão e cada árvore vai aprender um padrão diferente dos dados e no final o modelo vai combinar essas decisões, sendo mais preciso.
+
 rf = RandomForestClassifier(
-    n_estimators=50,
-    max_depth=10,
-    class_weight="balanced",
-    n_jobs=-1,
+    n_estimators=50, # escolhendo 50 árvores
+    max_depth=10, # limitando a profundidade das árvores
+    class_weight="balanced", # ajustando o peso das classes
+    n_jobs=-1, 
     random_state=42
 )
 
@@ -188,4 +191,79 @@ print(classification_report(y_test, y_pred_rf))
 #    accuracy                           1.00     85443
 #   macro avg       0.87      0.90      0.89     85443
 # weighted avg       1.00      1.00      1.00     85443
+
+# já melhoramos o recall (80%) comparando com a regressão logística (64%)
+# f1-score também aumentou (77) comparando com a regressão logística (73)
+
+#----------------------
+
+# Testando um pipeline
+
+from sklearn.pipeline import Pipeline
+
+# O pipeline serve para organizar o fluxo de processamento
+# Os dados passam automaticamente pela padronização e depois pelo modelo
+
+pipeline = Pipeline([
+    ("scaler", StandardScaler()),
+    ("model", LogisticRegression(max_iter=1000))
+])
+
+pipeline.fit(X_train, y_train)
+y_pred = pipeline.predict(X_test)
+
+# THRESHOLD
+# Por padrão, o modelo usa um threshold de 0.5,ou seja, se a probabilidade de fraude for maior que 0.5, ele classifica como fraude.
+# Aqui vamos usar 0.3 para sermos menos rigorosos. Se a probabilidade de fraude for maior que 0.3, o modelo já irá classificar como fraude. Estamos tentando aumentar o Recall, mesmo que isso gere mais falsos positivo.
+
+#----------------------
+
+threshhold = 0.3
+
+y_pred_custom = (y_probs > threshhold).astype(int)
+print(classification_report(y_test, y_pred_custom))
+
+#                precision    recall  f1-score   support
+#
+#           0       1.00      1.00      1.00     85295
+#           1       0.81      0.68      0.74       148
+#
+#    accuracy                           1.00     85443
+#   macro avg       0.91      0.84      0.87     85443
+# weighted avg       1.00      1.00      1.00     85443
+
+# precision continua alta, dessa vez com 81%
+# o recall diminuiu para 68%
+
+#----------------------
+
+# Modelo Avançado - XGBoost
+# É um dos algoritmos mais usados em competições e mercado.
+# Ele é mais poderoso que Random Forest para muitos problemas.
+# Boosting é uma técnica que vários modelos simples (árvores) são treinados em sequência, e a cada novo modelo, tenta corrigir os modelos anteriores.
+
+from xgboost import XGBClassifier
+
+xgb = XGBClassifier(
+    scale_pos_weight=10, # ajuda com desbalanceamento
+    use_label_encoder=False,
+    eval_metric="logloss"
+)
+
+xgb.fit(X_train, y_train)
+y_pred_xgb = xgb.predict(X_test)
+print(classification_report(y_test, y_pred_xgb))
+
+#                precision    recall  f1-score   support
+#
+#           0       1.00      1.00      1.00     85295
+#           1       0.94      0.78      0.85       148
+#
+#    accuracy                           1.00     85443
+#   macro avg       0.97      0.89      0.93     85443
+# weighted avg       1.00      1.00      1.00     85443
+
+# precision aumentou ainda mais, para 94%
+# o recall aumentou novamente para 78%
+# o f1-score mostra que a qualidade do modelo também aumentou para 85%,um bom equilibrio entre precision e recall
 
