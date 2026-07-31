@@ -267,3 +267,65 @@ print(classification_report(y_test, y_pred_xgb))
 # o recall aumentou novamente para 78%
 # o f1-score mostra que a qualidade do modelo também aumentou para 85%,um bom equilibrio entre precision e recall
 
+#----------------------
+
+# Importância de variáveis
+
+# Mostra como cada variável contribui para a decisão do modelo
+# Quanto maior a barra, maior a influência da variável
+# Por que verificar a importância delas? Porque o modelo não vai usar todas as variáveis na mesma intensidade. Algumas delas tem muito impacto na decisão do modelo, mas outras nem tanto.
+
+import matplotlib.pyplot as plt
+
+importancias = xgb.feature_importances_
+
+plt.bar(range(len(importancias)), importancias)
+plt.title("Importância das variáveis")
+plt.show()
+
+#----------------------
+
+# Ajuste de Hiperparâmetros
+# Testando várias combinações para melhorar o modelo. 
+
+from sklearn.model_selection import GridSearchCV
+
+# Criando parametros grid que queremos testar
+# Testa todas as combinações possíveis entre esses valores
+# Ele vai treinar vários modelos, cada um com uma combinação diferente de parâmetros e ver qual é o melhor
+param_grid = {
+    "max_depth": [3, 5],
+    "n_estimators": [50, 100]
+}
+
+grid = GridSearchCV(
+    XGBClassifier(eval_metric="logloss"),
+    param_grid,
+    scoring="recall",
+    cv=3 
+)
+
+grid.fit(X_train, y_train)
+print("Melhor modelo:", grid.best_params_)
+# Melhor modelo: {'max_depth': 5, 'n_estimators': 100}
+# Ou seja:
+# max_depth = 5 → cada árvore do modelo pode ter até 5 níveis de profundidade.
+# n_estimators = 100 → o modelo utiliza 100 árvores de decisão.
+# cv = 3 # → validação cruzada com 3 divisões (3-fold cross-validation). Cada uma das 4 combinações acima foi treinada e avaliada 3 vezes, usando diferentes partes dos dados para treino e validação.
+# No total, o algoritmo treinou: 4 combinações × 3 folds = 12 treinamentos. Depois calculou a média do desempenho de cada combinação.
+# A escolha do recall no scoring quer dizer ao GridSearchCV: escolha o modelo que tiver o maior recall
+
+#----------------------
+
+# Explicabilidade (SHAP)
+# SHAP mostra como cada variávei influencia a decisão do modelo.
+# É uma técnica que vai explicar como cada variável contribui para cada decisão do modelo.
+# Mostra o impacto de cada variável na previsão.
+# Neste caso, quando determinadas transações forem marcadas como fraude, é possível explicar quais variáveis lavaram a essa decisão. Essa é uma parte importante também para quem é da cybersegurança.
+
+import shap
+
+explainer = shap.Explainer(xgb)
+shap_values = explainer(X_test[:100])
+shap.plots.bar(shap_values)
+
