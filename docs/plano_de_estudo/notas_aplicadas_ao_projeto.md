@@ -38,6 +38,21 @@ Conhecer os dados antes de mexer neles. Perguntas guiando essa etapa:
 - Qual a distribuição da variável alvo (`Class`)?
 - Como as variáveis se distribuem? Tem outliers?
 
+**Resultados obtidos:**
+
+| Checagem | Resultado |
+|---|---|
+| Dimensão do dataset | 284.807 linhas × 31 colunas |
+| Tipos de dados | `float64` (30 colunas) + `int64` (`Class`) — todos corretos |
+| Valores nulos | Nenhum, em nenhuma coluna |
+| Distribuição de `Class` (antes da limpeza) | 99,83% normais / 0,17% fraude |
+
+- A distribuição de `Amount` foi verificada com um **boxenplot** (variação do boxplot, mais
+  indicada para datasets grandes) — revelou forte assimetria à direita, com a maioria das
+  transações concentrada perto de zero e alguns outliers isolados entre ~12.000 e ~26.000
+  (ver [como_ler_graficos.md](./como_ler_graficos.md) para a explicação de como ler esse
+  gráfico)
+
 ---
 
 ## 4. Limpeza dos dados (Data Cleaning)
@@ -52,6 +67,25 @@ Com base no que a EDA mostrou, o que fazer:
 > ⚠️ **Cuidado específico deste projeto:** em fraude, muitas vezes o outlier **é** a fraude —
 > por isso, remover outliers sem pensar pode apagar justamente os casos que o modelo precisa
 > aprender a identificar.
+
+**Checklist de limpeza — status final:**
+
+| Checagem | Resultado |
+|---|---|
+| Nulos | Nenhum encontrado — nenhuma ação necessária |
+| Tipos de dados | Todos corretos — nenhuma ação necessária |
+| Duplicados | 1.081 linhas encontradas (`df.duplicated().sum()`) e removidas com `drop_duplicates()` |
+| Dataset após remoção | 283.726 linhas × 31 colunas |
+| Impacto na proporção de fraude | Mínimo — de 0,1727% para 0,1667% (≈19 das 1.081 duplicatas eram fraude) |
+| Impacto na distribuição de `Amount` | Nenhum perceptível visualmente (boxenplot antes e depois praticamente idênticos) |
+| Outliers em `Amount` | **Mantidos** — decisão consciente, sem remoção |
+
+**Decisão sobre os outliers:** em detecção de fraude, valores atípicos podem representar
+justamente o padrão que o modelo precisa aprender a reconhecer, não necessariamente um erro
+de coleta. Por isso, nenhuma remoção de outliers foi aplicada nesta etapa.
+
+> ✅ Etapa de limpeza concluída — cada decisão foi verificada com evidência no código, não
+> assumida por padrão.
 
 ---
 

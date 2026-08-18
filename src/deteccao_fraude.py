@@ -12,11 +12,13 @@ docs/plano_de_estudo/processo_de_estudo.md
     Métrica prioritária: RECALL- deixar passar uma fraude é pior do que investigar uma transação normal à toa (detalhes em notas_aplicadas_ao_projeto.md)
 """
 
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 """
 2. COLETA DOS DADOS
 """
-
-import pandas as pd
 
 url = "https://storage.googleapis.com/download.tensorflow.org/data/creditcard.csv"
 df = pd.read_csv(url)
@@ -36,8 +38,13 @@ print(df.info())
 # dtypes    → float64(30), int64(1)
 # Class     → 0: 0.998273 / 1: 0.001727 (99.83% transações normais, 0.17% são fraudes)
 
-# Distribuição da variável algo - revela o problema central do projeto
+# Distribuição da variável alvo - revela o problema central do projeto
 print(df["Class"].value_counts(normalize=True))
+
+# Visualização da distribuição de Amount — checagem exploratória de outliers
+sns.boxenplot(x=df["Amount"])
+plt.title("Distribuição de Amount — verificação de outliers")
+plt.show()
 
 """
 4. LIMPEZA DOS DADOS (Data Cleaning)
@@ -50,11 +57,23 @@ print(df["Class"].value_counts(normalize=True))
 duplicados = df.duplicated().sum()
 print(f"Linhas duplicadas: {duplicados}") # 1081 neste momento
 
-# Outliers em Amount - apenas observação visual, sem remoção nesta etapa
-import matplotlib.pyplot as plt
-import seaborn as sns
+# Removendo as linhas duplicadas
+df = df.drop_duplicates()
+print(df.shape) # (283726 transações, 31 colunas)
+
+# Checando se as duplicatas afetaram a proporção de fraude
+print(df["Class"].value_counts(normalize=True)) 
+# Class → 0: 0.998333 / 1: 0.001667 (99.8333% transações normais, 0.1667% são fraudes)
+
+# ---
+
+# Outliers em Amount - depois da remoção de linhas duplicadas
 
 sns.boxenplot(x=df["Amount"])
-plt.title("Distribuição de Amount - verificação de outliers")
+plt.title("Distribuição de Amount — verificação de outliers (dados sem duplicados)")
 plt.show()
 
+# Decisão sobre os outliers: MANTER
+# Em detecção de fraude, valores atípicos podem representar justamente o padrão que o
+# modelo precisa aprender a reconhecer, não necessariamente um erro de coleta.
+# Nenhuma remoção de outliers aplicada nesta etapa.
