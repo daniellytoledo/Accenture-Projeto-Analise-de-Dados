@@ -331,3 +331,51 @@ print(df_custo)
 Posição	Versão	Threshold	FN	FP	Custo Total
 🥇 1º	SMOTE	0,3	        26  25	285
 """
+
+"""
+10.2 AJUSTE DE HIPERPARÂMETROS — GridSearchCV com SMOTE aplicado corretamente por fold
+"""
+
+print("\n Ajude de Hiperparâmetros - SMOTE por fold")
+
+from imblearn.pipeline import Pipeline as ImbPipeline
+from sklearn.model_selection import GridSearchCV
+
+# Pipeline: SMOTE + modelo, para que o SMOTE seja recalculado em cada fold do CV
+pipeline = ImbPipeline([
+    ("smote", SMOTE(random_state=42)),
+    ("rf", RandomForestClassifier(random_state=42, n_jobs=-1))
+])
+
+param_grid = {
+    "rf__n_estimators": [100, 200],
+    "rf__max_depth": [5, 10, 20, None],
+}
+
+grid = GridSearchCV(
+    pipeline,
+    param_grid,
+    scoring="recall",   # otimizando pela métrica prioritária do projeto
+    cv=5,
+    n_jobs=-1
+)
+
+# Importante: usamos X_train/y_train ORIGINAIS aqui (sem SMOTE pré-aplicado)
+# O SMOTE roda dentro do pipeline, em cada fold, automaticamente
+grid.fit(X_train, y_train)
+
+print("Melhores hiperparâmetros:", grid.best_params_)
+print("Melhor recall (validação cruzada):", grid.best_score_)
+
+# Avaliando o melhor modelo encontrado, no threshold já decidido
+print("\n Avaliando o melhor modelo encontrado")
+
+melhor_modelo = grid.best_estimator_
+
+probs_melhor_modelo = melhor_modelo.predict_proba(X_test)[:, 1]
+y_pred_final = (probs_melhor_modelo > 0.3).astype(int)
+
+print(classification_report(y_test, y_pred_final, target_names=["Normal", "Fraude"]))
+
+custo_final, fn_final, fp_final = calcular_custo(y_test, y_pred_final)
+print(f"Custo total (modelo ajustado): {custo_final} | FN: {fn_final} | FP: {fp_final}")
