@@ -219,6 +219,38 @@ custo_total = (fn * CUSTO_FN) + (fp * CUSTO_FP)
 > configurações testadas, equilibrando a redução de falsos negativos (caros) sem deixar os
 > falsos positivos explodirem.
 
+### Ajuste de hiperparâmetros (GridSearchCV)
+
+**Erro metodológico identificado e corrigido:** a primeira tentativa usou
+`scoring="recall"` no `GridSearchCV`. Como recall isolado não penaliza falsos positivos, o
+grid encontrou hiperparâmetros que maximizavam recall às custas de uma explosão de falsos
+positivos (FN: 19, FP: 1.450 — custo total de 1.640, muito pior que o baseline de 285).
+
+**Correção:** criado um `scorer` customizado que otimiza diretamente pelo **custo total**
+(a métrica que realmente importa para o projeto), usando `make_scorer` com a mesma fórmula
+de custo definida acima.
+
+```python
+def custo_scorer(y_true, y_pred):
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    custo = (fn * CUSTO_FN) + (fp * CUSTO_FP)
+    return -custo  # negativo pois GridSearchCV maximiza o score
+```
+
+O SMOTE foi aplicado dentro de um `imblearn.Pipeline`, para ser recalculado separadamente em
+cada fold do cross-validation (evita vazamento entre exemplos sintéticos e reais).
+
+**Resultado final:**
+
+| | Custo Total | FN | FP |
+|---|---|---|---|
+| Baseline (RF padrão, sem grid search) | 285 | 26 | 25 |
+| Grid search (`max_depth=None`, `n_estimators=100`) | **285** | 26 | 25 |
+
+> ✅ O `GridSearchCV` confirmou que a configuração já usada (RF padrão) já era ótima (ou
+> empatada) entre as combinações testadas — validando formalmente a decisão anterior, em vez
+> de apenas assumi-la.
+
 ---
 
 ## 11. Interpretação / Explicabilidade
@@ -241,9 +273,6 @@ relatórios, apresentações.
 
 ## Próximos passos / ideias para evoluir o projeto
 
-- [ ] Ajuste de hiperparâmetros (GridSearchCV) na configuração final (SMOTE + RF)
+- [x] Ajuste de hiperparâmetros (GridSearchCV) na configuração final (SMOTE + RF)
 - [ ] Expandir análise SHAP com `beeswarm` e `waterfall` para casos individuais
 - [ ] Construir dashboard no Power BI com os resultados do modelo
-- [ ] *(ideia para projeto futuro separado)* Extrair as partes genéricas deste pipeline
-      (comparação de balanceamento, análise de threshold/custo) para um módulo reutilizável,
-      aplicável a outros problemas de classificação binária desbalanceada — não só fraude
