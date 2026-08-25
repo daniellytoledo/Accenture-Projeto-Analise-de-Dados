@@ -387,3 +387,11 @@ print(classification_report(y_test, y_pred_final, target_names=["Normal", "Fraud
 
 custo_final, fn_final, fp_final = calcular_custo(y_test, y_pred_final)
 print(f"Custo total (modelo ajustado): {custo_final} | FN: {fn_final} | FP: {fp_final}")
+
+"""
+10.3 SALVANDO O MODELO FINAL — evita retreinar toda vez
+"""
+
+import joblib
+
+joblib.dump(melhor_modelo, "modelo_fraude_final.pkl")
