@@ -333,49 +333,29 @@ Posição	Versão	Threshold	FN	FP	Custo Total
 """
 
 """
-10.2 AJUSTE DE HIPERPARÂMETROS — GridSearchCV com SMOTE aplicado corretamente por fold
+10.2 AJUSTE DE HIPERPARÂMETROS — corrigido: otimizando pelo custo, não pelo recall isolado
 """
 
-print("\n Ajude de Hiperparâmetros - SMOTE por fold")
+print("\n Ajuste de hiperparametros - otimizando pelo custo")
 
-from imblearn.pipeline import Pipeline as ImbPipeline
-from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import make_scorer
 
-# Pipeline: SMOTE + modelo, para que o SMOTE seja recalculado em cada fold do CV
-pipeline = ImbPipeline([
-    ("smote", SMOTE(random_state=42)),
-    ("rf", RandomForestClassifier(random_state=42, n_jobs=-1))
-])
+def custo_scorer(y_true, y_pred):
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    custo = (fn * CUSTO_FN) + (fp * CUSTO_FP)
+    return -custo  # negativo porque o GridSearchCV sempre tenta MAXIMIZAR o score
 
-param_grid = {
-    "rf__n_estimators": [100, 200],
-    "rf__max_depth": [5, 10, 20, None],
-}
+scorer_customizado = make_scorer(custo_scorer)
 
 grid = GridSearchCV(
     pipeline,
     param_grid,
-    scoring="recall",   # otimizando pela métrica prioritária do projeto
+    scoring=scorer_customizado,  # agora otimiza pelo que realmente importa: o custo
     cv=5,
     n_jobs=-1
 )
 
-# Importante: usamos X_train/y_train ORIGINAIS aqui (sem SMOTE pré-aplicado)
-# O SMOTE roda dentro do pipeline, em cada fold, automaticamente
 grid.fit(X_train, y_train)
 
 print("Melhores hiperparâmetros:", grid.best_params_)
-print("Melhor recall (validação cruzada):", grid.best_score_)
-
-# Avaliando o melhor modelo encontrado, no threshold já decidido
-print("\n Avaliando o melhor modelo encontrado")
-
-melhor_modelo = grid.best_estimator_
-
-probs_melhor_modelo = melhor_modelo.predict_proba(X_test)[:, 1]
-y_pred_final = (probs_melhor_modelo > 0.3).astype(int)
-
-print(classification_report(y_test, y_pred_final, target_names=["Normal", "Fraude"]))
-
-custo_final, fn_final, fp_final = calcular_custo(y_test, y_pred_final)
-print(f"Custo total (modelo ajustado): {custo_final} | FN: {fn_final} | FP: {fp_final}")
+print("Melhor custo (validação cruzada):", -grid.best_score_)  # volta a ser positivo para leitura
