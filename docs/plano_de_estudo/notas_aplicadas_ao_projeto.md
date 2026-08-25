@@ -131,6 +131,23 @@ acertar 99%+. Por isso, entram aqui técnicas como:
 > ⚠️ Sempre **depois do split**, e aplicadas **só no treino** — nunca no teste, senão é como
 > estar "trapaceando" na avaliação.
 
+**Comparação das 4 técnicas (Random Forest, threshold padrão 0,5):**
+
+| Versão | Recall | Precision | F1 |
+|---|---|---|---|
+| Sem balanceamento | 0,768 | 0,965 | 0,855 |
+| SMOTE | 0,782 | 0,902 | 0,838 |
+| Undersampling | 0,866 | 0,051 | 0,095 |
+| `class_weight="balanced"` | 0,760 | 0,930 | 0,840 |
+
+- **Undersampling foi descartado**: reduziu o treino de 198.608 para apenas 662 linhas,
+  descartando >99% dos exemplos normais reais — resultado foi um colapso de precision (5,1%),
+  inutilizável na prática.
+- **`class_weight="balanced"` não trouxe ganho** em relação a "sem balanceamento" — ficou
+  praticamente empatado, sem justificar a complexidade extra.
+- **SMOTE e "sem balanceamento" seguiram como candidatos finais**, decididos junto com o
+  ajuste de threshold (ver seção 10).
+
 ---
 
 ## 8. Treinamento do modelo
@@ -167,6 +184,41 @@ y_pred_custom = (y_probs > threshold).astype(int)
 **Hiperparâmetros:** uso do `GridSearchCV` para testar várias configurações do modelo e achar
 a que performa melhor.
 
+### Threshold variando — Sem balanceamento vs. SMOTE
+
+Testamos os dois melhores candidatos de balanceamento em vários thresholds (0,5 a 0,1):
+
+- **"Sem balanceamento" bate um teto por volta de recall 0,80** — baixar o threshold além de
+  0,2 não aumenta o recall de forma relevante, só piora a precision (o modelo não tem mais
+  informação nova para dar)
+- **SMOTE consegue ultrapassar esse teto**, alcançando recall de até 0,852 (com custo de
+  precision mais baixa em thresholds extremos)
+
+### Análise de custo — decisão final
+
+Suposição documentada: **custo de um Falso Negativo (fraude não detectada) = 10× o custo de
+um Falso Positivo** (investigar uma transação normal à toa).
+
+```python
+CUSTO_FN = 10
+CUSTO_FP = 1
+custo_total = (fn * CUSTO_FN) + (fp * CUSTO_FP)
+```
+
+**Resultado (top 5 menores custos):**
+
+| Versão | Threshold | FN | FP | Custo Total |
+|---|---|---|---|---|
+| **SMOTE** | **0,3** | 26 | 25 | **285** ✅ |
+| SMOTE | 0,4 | 29 | 16 | 306 |
+| Sem balanceamento | 0,3 | 30 | 10 | 310 |
+| Sem balanceamento | 0,1 | 28 | 33 | 313 |
+| Sem balanceamento | 0,4 | 31 | 5 | 315 |
+
+> ✅ **Decisão final do projeto:** SMOTE + threshold 0,3 — menor custo total entre todas as
+> configurações testadas, equilibrando a redução de falsos negativos (caros) sem deixar os
+> falsos positivos explodirem.
+
 ---
 
 ## 11. Interpretação / Explicabilidade
@@ -189,8 +241,9 @@ relatórios, apresentações.
 
 ## Próximos passos / ideias para evoluir o projeto
 
-- [ ] Comparar formalmente modelo sem balanceamento vs. `class_weight` vs. SMOTE
-- [ ] Adicionar matriz de custo (falso positivo vs. falso negativo)
-- [ ] Otimizar threshold com base em custo, não em valor arbitrário
+- [ ] Ajuste de hiperparâmetros (GridSearchCV) na configuração final (SMOTE + RF)
 - [ ] Expandir análise SHAP com `beeswarm` e `waterfall` para casos individuais
 - [ ] Construir dashboard no Power BI com os resultados do modelo
+- [ ] *(ideia para projeto futuro separado)* Extrair as partes genéricas deste pipeline
+      (comparação de balanceamento, análise de threshold/custo) para um módulo reutilizável,
+      aplicável a outros problemas de classificação binária desbalanceada — não só fraude

@@ -314,3 +314,20 @@ for nome, probs in [("Sem balanceamento", probs_sem_balanceamento), ("SMOTE", pr
 df_custo = pd.DataFrame(resultados_custo)
 df_custo = df_custo.sort_values("Custo Total")
 print(df_custo)
+
+"""
+              Versão  Threshold  Falsos Negativos  Falsos Positivos  Custo Total
+7              SMOTE        0.3                26                25          285
+8              SMOTE        0.2                24                64          304
+6              SMOTE        0.4                29                16          306
+2  Sem balanceamento        0.3                30                10          310
+4  Sem balanceamento        0.1                28                33          313
+1  Sem balanceamento        0.4                31                 5          315
+3  Sem balanceamento        0.2                30                16          316
+5              SMOTE        0.5                31                12          322
+0  Sem balanceamento        0.5                33                 4          334
+9              SMOTE        0.1                21               249          459
+
+Posição	Versão	Threshold	FN	FP	Custo Total
+🥇 1º	SMOTE	0,3	        26  25	285
+"""
