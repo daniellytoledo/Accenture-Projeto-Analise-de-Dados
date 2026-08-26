@@ -394,4 +394,7 @@ print(f"Custo total (modelo ajustado): {custo_final} | FN: {fn_final} | FP: {fp_
 
 import joblib
 
-joblib.dump(melhor_modelo, "modelo_fraude_final.pkl")
+joblib.dump(
+    {"modelo": melhor_modelo, "scaler": scaler},
+    "models/modelo_fraude_final.pkl"
+)
