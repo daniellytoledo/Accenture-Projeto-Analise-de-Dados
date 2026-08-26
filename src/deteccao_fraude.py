@@ -1,3 +1,4 @@
+# %%
 """
 Projeto: Detecção de Fraudes em Transações
 Autor: Danielly Toledo
@@ -16,6 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# %%
 """
 2. COLETA DOS DADOS
 """
@@ -27,6 +29,7 @@ df = pd.read_csv(url)
 
 print(df.head())
 
+# %%
 """
 3. EXPLORAÇÃO INICIAL (EDA)
 """
@@ -34,8 +37,8 @@ print(df.head())
 print("\n=== 3. Exploração Inicial ===")
 
 # Estrutura geral do dataset
-print(df.shape) 
-print(df.info()) 
+print(df.shape)
+print(df.info())
 
 # df.shape  → (284807 transações, 31 colunas)
 # df.info() → Non-Null Count: 284807 non-null em todas as colunas, ou seja, nenhuma coluna tem valores nulos
@@ -50,6 +53,7 @@ sns.boxenplot(x=df["Amount"])
 plt.title("Distribuição de Amount — verificação de outliers")
 plt.show()
 
+# %%
 """
 4. LIMPEZA DOS DADOS (Data Cleaning)
 """
@@ -68,7 +72,7 @@ df = df.drop_duplicates()
 print(df.shape) # (283726 transações, 31 colunas)
 
 # Checando se as duplicatas afetaram a proporção de fraude
-print(df["Class"].value_counts(normalize=True)) 
+print(df["Class"].value_counts(normalize=True))
 # Class → 0: 0.998333 / 1: 0.001667 (99.8333% transações normais, 0.1667% são fraudes)
 
 # ---
@@ -84,6 +88,7 @@ plt.show()
 # modelo precisa aprender a reconhecer, não necessariamente um erro de coleta.
 # Nenhuma remoção de outliers aplicada nesta etapa.
 
+# %%
 """
 5. FEATURE ENGINEERING
 """
@@ -99,7 +104,7 @@ df["Amount_log"] = np.log1p(df["Amount"])
 # Hour: converte Time (segundos desde a primeira transação) em hora do dia (0-23)
 df["Hour"] = (df["Time"] // 3600) % 24
 
-
+# %%
 """
 6. SEPARAÇÃO TREINO/TESTE
 """
@@ -115,7 +120,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, stratify=y, test_size=0.3, random_state=42
 )
 
-
+# %%
 """
 6.1 PADRONIZAÇÃO (StandardScaler) — aplicada apenas após o split
 """
@@ -132,6 +137,7 @@ X_train["Amount_scaled"] = scaler.fit_transform(X_train[["Amount"]])
 # transform apenas: aplica a mesma transformação aprendida no treino, sem "aprender" de novo
 X_test["Amount_scaled"] = scaler.transform(X_test[["Amount"]])
 
+# %%
 """
 7. BALANCEAMENTO DAS CLASSES
 """
@@ -165,6 +171,7 @@ print(f"\nTamanho treino original: {len(X_train)}")
 print(f"Tamanho treino SMOTE: {len(X_train_smote)}")
 print(f"Tamanho treino Undersampling: {len(X_train_under)}")
 
+# %%
 """
 8. TREINAMENTO DOS MODELOS — comparando as versões balanceadas
 """
@@ -247,6 +254,7 @@ Ranking final, considerando recall como prioridade (mas sem ignorar precision)
 
 """
 
+# %%
 """
 10. AJUSTE FINO — testando threshold para os dois candidatos de balanceamento
 """
@@ -280,6 +288,7 @@ for nome, probs in [("Sem balanceamento", probs_sem_balanceamento), ("SMOTE", pr
         f1 = f1_score(y_test, y_pred_t)
         print(f"Threshold {t:.1f} → Recall: {r:.3f} | Precision: {p:.3f} | F1: {f1:.3f}")
 
+# %%
 """
 10.1 ANÁLISE DE CUSTO — FN custa 10x mais que FP (suposição documentada do projeto)
 """
@@ -332,6 +341,7 @@ Posição	Versão	Threshold	FN	FP	Custo Total
 🥇 1º	SMOTE	0,3	        26  25	285
 """
 
+# %%
 """
 10.2 AJUSTE DE HIPERPARÂMETROS — SMOTE por fold, otimizando pelo custo (não pelo recall isolado)
 """
@@ -388,13 +398,19 @@ print(classification_report(y_test, y_pred_final, target_names=["Normal", "Fraud
 custo_final, fn_final, fp_final = calcular_custo(y_test, y_pred_final)
 print(f"Custo total (modelo ajustado): {custo_final} | FN: {fn_final} | FP: {fp_final}")
 
+# %%
 """
 10.3 SALVANDO O MODELO FINAL — evita retreinar toda vez
 """
 
+import os
 import joblib
+
+os.makedirs("models", exist_ok=True)  # garante que a pasta existe, mesmo em outra máquina
 
 joblib.dump(
     {"modelo": melhor_modelo, "scaler": scaler},
     "models/modelo_fraude_final.pkl"
 )
+
+print("\nModelo salvo em models/modelo_fraude_final.pkl")
