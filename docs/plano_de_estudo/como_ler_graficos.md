@@ -9,8 +9,10 @@
 ## Índice
 
 - [Boxplot](#boxplot)
+- [SHAP — Importância global (bar plot)](#shap--importância-global-bar-plot)
+- [SHAP — Importância + direção (beeswarm)](#shap--importância--direção-beeswarm)
 - *(próximos gráficos entram aqui conforme forem estudados: histograma, curva ROC, curva
-  Precision-Recall, gráfico de importância de variáveis, SHAP, etc.)*
+  Precision-Recall, SHAP waterfall, etc.)*
 
 ---
 
@@ -24,7 +26,7 @@ o quão espalhados eles estão, e quais valores fogem do padrão.
 
 ### Anatomia do gráfico
 
-![Boxenplot da distribuição de Amount, com outliers visíveis à direita](./imagens/boxenplot_amount.png)
+![Boxenplot da distribuição de Amount, com outliers visíveis à direita](./imagens/boxplot_amount.png)
 
 *Este é o próprio gráfico gerado no projeto (distribuição de `Amount`). Olhando de perto, é
 possível notar que existem **vários retângulos azuis aninhados**, não só um — isso significa
@@ -125,4 +127,105 @@ plt.show()
 
 ---
 
-*Próxima entrada: adicionar explicação de histograma, assim que ele aparecer no projeto.*
+## SHAP — Importância global (bar plot)
+
+### O que ele mostra
+
+Esse gráfico responde a uma pergunta simples: **em média, quais variáveis mais pesam nas
+decisões do modelo?** Ele resume, para cada variável, o quanto ela contribui (em média,
+em valor absoluto) para empurrar as previsões do modelo — sem indicar a direção (isso fica
+para o próximo gráfico, o beeswarm).
+
+![Importância global das variáveis via SHAP](./imagens/mean_shap.png)
+
+*Este é o gráfico gerado no projeto de detecção de fraude, mostrando quais variáveis mais
+influenciam a decisão do modelo.*
+
+### Anatomia do gráfico
+
+| Elemento | Onde está neste gráfico | O que representa |
+|---|---|---|
+| **Eixo Y (nomes das variáveis)** | `V14`, `V12`, `V4`, `V3`, etc. | Cada barra é uma variável do modelo, ordenada da mais para a menos importante |
+| **Comprimento da barra** | Quanto mais longa, mais à direita ela termina | O valor médio de `\|SHAP value\|` — o quanto aquela variável, em média, influencia a previsão (não importa a direção, só a magnitude) |
+| **Número ao lado da barra** (ex: `+0.09`) | Rótulo no fim de cada barra | O valor exato de importância média daquela variável |
+| **Última barra ("of 24 other features")** | Barra ao final, geralmente maior que as individuais | Soma da importância de todas as variáveis menos relevantes, agrupadas — evita poluir o gráfico com dezenas de barras pequenas |
+
+### Como ler, na prática
+
+- As variáveis no **topo** são as que mais pesam nas decisões do modelo, em média, considerando todas as previsões
+- O valor numérico é sempre positivo aqui (é um valor absoluto) — isso porque este gráfico mede **quanto** cada variável importa, não **para que lado** ela empurra a decisão
+- Se a última barra ("of N other features") for grande, isso indica que a decisão do modelo é **distribuída** entre muitas variáveis, não concentrada só nas primeiras
+
+### Cuidado na interpretação
+
+Esse gráfico **não diz se a variável aumenta ou diminui a chance de fraude** — só diz o
+quanto ela "mexe" na decisão. Para saber a direção do impacto, é necessário o gráfico
+**beeswarm** (próxima seção).
+
+### Como gerar (Python / shap)
+
+```python
+import shap
+
+explainer = shap.Explainer(modelo)
+shap_values = explainer(X_test_amostra)
+
+shap.plots.bar(shap_values[:, :, 1])  # [:, :, 1] = classe de interesse (ex: fraude)
+```
+
+---
+
+## SHAP — Importância + direção (beeswarm)
+
+### O que ele mostra
+
+Esse é o gráfico mais rico dos dois: além de mostrar a importância de cada variável, ele
+mostra **para que lado** ela empurra a previsão — ou seja, se valores altos ou baixos daquela
+variável tornam o resultado mais ou menos propenso a ser classificado como a classe de
+interesse (por exemplo, fraude).
+
+![Importância e direção do impacto via SHAP beeswarm](./imagens/shap_impact_on_model_output.png)
+
+*Este é o gráfico gerado no projeto, para a classe fraude.*
+
+### Anatomia do gráfico
+
+| Elemento | Onde está neste gráfico | O que representa |
+|---|---|---|
+| **Eixo Y (nomes das variáveis)** | `V14`, `V12`, `V4`, etc., mesma ordem de importância do bar plot | Cada linha é uma variável |
+| **Eixo X (SHAP value)** | Vai de negativo (esquerda) a positivo (direita), cruzando o zero no meio | Indica a direção e a força do impacto: valores negativos empurram para **longe** da classe de interesse; valores positivos empurram **para** ela |
+| **Cada ponto** | Uma bolinha colorida | Representa **uma transação individual** do conjunto de dados analisado — não uma média, um caso real |
+| **Cor do ponto** | Azul (baixo) → Rosa/Magenta (alto), conforme a legenda à direita | O valor que **aquela variável específica** tinha, para aquela transação específica |
+| **Posição horizontal dos pontos amontoados** | Onde os pontos se concentram numa mesma variável | Mostra o padrão predominante — por exemplo, se a maioria dos pontos rosa (valores altos) está à esquerda, isso indica que valores altos daquela variável tendem a reduzir a chance de fraude |
+
+### Como ler, na prática
+
+Pegando como exemplo a variável do topo (`V14`) no gráfico do projeto:
+- Os pontos **rosa** (valores altos de V14) aparecem mais concentrados à **esquerda** (SHAP
+  negativo) → valores altos de V14 empurram a previsão para **longe** de fraude
+- Os pontos **azuis** (valores baixos de V14) aparecem espalhados mais à **direita**, inclusive
+  nos extremos → valores baixos de V14 estão associados a maior chance de fraude
+
+Repare que isso é **oposto** em outras variáveis (ex: `V4`, onde os pontos rosa aparecem mais
+à direita) — cada variável pode ter uma relação diferente (direta ou inversa) com a classe de
+interesse, e o beeswarm revela isso variável por variável.
+
+### Cuidado na interpretação
+
+- O beeswarm mostra o que o **modelo aprendeu**, não necessariamente uma relação de causa e
+  efeito real no mundo — se o modelo aprendeu um padrão espúrio, o gráfico vai mostrá-lo com a
+  mesma "confiança" visual de um padrão genuíno
+- Quando as variáveis analisadas já vêm transformadas (ex: por PCA, como `V1`-`V28` neste
+  projeto), a leitura é só **estatística** — dá para saber que "V14 baixo" está associado a
+  fraude, mas não dá para saber *o que* V14 representa no mundo real
+
+### Como gerar (Python / shap)
+
+```python
+shap.plots.beeswarm(shap_values[:, :, 1])  # [:, :, 1] = classe de interesse (ex: fraude)
+```
+
+---
+
+*Próxima entrada: adicionar explicação do SHAP waterfall (casos individuais), assim que
+gerado no projeto.*
