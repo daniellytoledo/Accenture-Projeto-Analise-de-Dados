@@ -80,7 +80,3 @@ for i in range(len(y_real_amostra)):
 print(f"Índice de acerto de fraude: {idx_acerto_fraude}")
 print(f"Índice de falso positivo: {idx_falso_positivo}")
 print(f"Índice de falso negativo: {idx_falso_negativo}")
-
-# %%
-import os
-print(os.getcwd())
