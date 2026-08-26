@@ -50,33 +50,59 @@ shap.plots.beeswarm(shap_values[:, :, 1])
 
 # %%
 """
-11.1 CASOS INDIVIDUAIS — encontrando exemplos de cada tipo (acerto, falso positivo, falso negativo)
+11.1 CASOS INDIVIDUAIS — buscando em todo o X_test, não só numa amostra pequena
 """
 
-# Reconstruindo as previsões do modelo para a mesma amostra usada no SHAP
-probs_amostra = melhor_modelo.predict_proba(X_test_amostra)[:, 1]
-y_pred_amostra = (probs_amostra > 0.3).astype(int)
-y_real_amostra = y_test[:200].values
+# Previsões para todo o conjunto de teste
+probs_teste_completo = melhor_modelo.predict_proba(X_test)[:, 1]
+y_pred_teste_completo = (probs_teste_completo > 0.3).astype(int)
+y_real_teste_completo = y_test.values
 
-# Variáveis que vão guardar o índice de cada tipo de caso, começando vazias
 idx_acerto_fraude = None
 idx_falso_positivo = None
 idx_falso_negativo = None
 
-for i in range(len(y_real_amostra)):
-    se_e_fraude_real = y_real_amostra[i] == 1
-    se_previu_fraude = y_pred_amostra[i] == 1
+for i in range(len(y_real_teste_completo)):
+    real = y_real_teste_completo[i]
+    previsto = y_pred_teste_completo[i]
 
-    if se_e_fraude_real and se_previu_fraude and idx_acerto_fraude is None:
+    if real == 1 and previsto == 1 and idx_acerto_fraude is None:
         idx_acerto_fraude = i
 
-    if not se_e_fraude_real and se_previu_fraude and idx_falso_positivo is None:
+    if real == 0 and previsto == 1 and idx_falso_positivo is None:
         idx_falso_positivo = i
 
-    if se_e_fraude_real and not se_previu_fraude and idx_falso_negativo is None:
+    if real == 1 and previsto == 0 and idx_falso_negativo is None:
         idx_falso_negativo = i
 
-# Mostrando o que foi encontrado (ou não) na amostra
+    # Para assim que os três forem encontrados, sem precisar varrer tudo
+    if None not in (idx_acerto_fraude, idx_falso_positivo, idx_falso_negativo):
+        break
+
 print(f"Índice de acerto de fraude: {idx_acerto_fraude}")
 print(f"Índice de falso positivo: {idx_falso_positivo}")
 print(f"Índice de falso negativo: {idx_falso_negativo}")
+
+# %%
+
+"""
+11.2 WATERFALL — explicando os três casos específicos encontrados
+"""
+
+# Selecionando as linhas exatas do X_test usando os índices encontrados
+casos_especificos = X_test.iloc[[idx_acerto_fraude, idx_falso_positivo, idx_falso_negativo]]
+
+# Gerando as explicações SHAP só para essas 3 linhas (rápido, não precisa da amostra de 200)
+shap_values_casos = explainer(casos_especificos)
+
+# --- Caso 1: Acerto de fraude ---
+print("=== Acerto de Fraude (fraude real, o modelo identificou corretamente) ===")
+shap.plots.waterfall(shap_values_casos[0, :, 1])
+
+# --- Caso 2: Falso Positivo ---
+print("=== Falso Positivo (transação normal, o modelo marcou como fraude) ===")
+shap.plots.waterfall(shap_values_casos[1, :, 1])
+
+# --- Caso 3: Falso Negativo ---
+print("=== Falso Negativo (fraude real, o modelo não detectou) ===")
+shap.plots.waterfall(shap_values_casos[2, :, 1])
