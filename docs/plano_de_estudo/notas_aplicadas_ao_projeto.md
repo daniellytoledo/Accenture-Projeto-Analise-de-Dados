@@ -251,6 +251,19 @@ cada fold do cross-validation (evita vazamento entre exemplos sintéticos e reai
 > empatada) entre as combinações testadas — validando formalmente a decisão anterior, em vez
 > de apenas assumi-la.
 
+### Boas práticas de engenharia aplicadas nesta etapa
+
+Como o `GridSearchCV` demora ~20 minutos para rodar, duas práticas foram adotadas para evitar
+retrabalho desnecessário:
+
+- **Persistência do modelo (`joblib`)**: o `melhor_modelo` (pipeline SMOTE + RF) e o `scaler`
+  já treinados são salvos juntos em `models/modelo_fraude_final.pkl`, como um dicionário
+  (`{"modelo": ..., "scaler": ...}`). Isso permite que a etapa de interpretação (SHAP) carregue
+  o modelo pronto, sem precisar retreinar nada.
+- **Células interativas no VS Code (`# %%`)**: o script `deteccao_fraude.py` foi organizado em
+  células executáveis individualmente, permitindo rodar o `GridSearchCV` uma única vez e manter
+  o resultado (`melhor_modelo`) vivo na sessão, sem reiniciar o script inteiro a cada ajuste.
+
 ---
 
 ## 11. Interpretação / Explicabilidade
@@ -276,3 +289,6 @@ relatórios, apresentações.
 - [x] Ajuste de hiperparâmetros (GridSearchCV) na configuração final (SMOTE + RF)
 - [ ] Expandir análise SHAP com `beeswarm` e `waterfall` para casos individuais
 - [ ] Construir dashboard no Power BI com os resultados do modelo
+- [ ] *(ideia para projeto futuro separado)* Extrair as partes genéricas deste pipeline
+      (comparação de balanceamento, análise de threshold/custo) para um módulo reutilizável,
+      aplicável a outros problemas de classificação binária desbalanceada — não só fraude
