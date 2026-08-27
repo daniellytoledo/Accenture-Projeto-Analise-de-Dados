@@ -11,8 +11,9 @@
 - [Boxplot](#boxplot)
 - [SHAP — Importância global (bar plot)](#shap--importância-global-bar-plot)
 - [SHAP — Importância + direção (beeswarm)](#shap--importância--direção-beeswarm)
+- [SHAP — Casos individuais (waterfall)](#shap--casos-individuais-waterfall)
 - *(próximos gráficos entram aqui conforme forem estudados: histograma, curva ROC, curva
-  Precision-Recall, SHAP waterfall, etc.)*
+  Precision-Recall, etc.)*
 
 ---
 
@@ -227,5 +228,90 @@ shap.plots.beeswarm(shap_values[:, :, 1])  # [:, :, 1] = classe de interesse (ex
 
 ---
 
-*Próxima entrada: adicionar explicação do SHAP waterfall (casos individuais), assim que
-gerado no projeto.*
+## SHAP — Casos individuais (waterfall)
+
+### O que ele mostra
+
+Enquanto o bar plot e o beeswarm explicam o modelo **de forma geral**, o waterfall explica
+**uma única previsão específica** — por exemplo, uma transação individual. Ele mostra, passo
+a passo, como o modelo partiu de um valor "neutro" (a média geral de todas as previsões) até
+chegar na previsão final daquele caso, e quanto cada variável contribuiu nesse caminho.
+
+### Anatomia do gráfico
+
+| Elemento | O que representa |
+|---|---|
+| **`E[f(X)]`** (linha pontilhada à esquerda ou embaixo) | O valor "base" — a previsão média do modelo, antes de considerar qualquer variável daquele caso específico |
+| **`f(x)`** (no topo do gráfico) | A previsão final para aquele caso específico, depois de somar o efeito de todas as variáveis |
+| **Barras rosa/magenta (apontando para a direita)** | Variáveis que **empurraram a previsão para cima** (mais próximo de "fraude", neste projeto) |
+| **Barras azuis (apontando para a esquerda)** | Variáveis que **empurraram a previsão para baixo** (mais próximo de "normal") |
+| **Número ao lado de cada barra** | O quanto aquela variável contribuiu, em pontos, para a previsão final |
+| **Valor à esquerda do nome da variável** (ex: `-5.208 = V14`) | O valor real que aquela variável tinha, **nesta transação específica** |
+| **"N other features"** (última barra) | Soma do efeito de todas as variáveis menos importantes, agrupadas |
+
+### Como ler, na prática
+
+Comece de baixo para cima (ou olhe a ordem das barras): cada uma "empurra" o valor um pouco
+mais para a esquerda ou direita, até chegar no `f(x)` final, no topo. A leitura conta uma
+história: *"o modelo partiu de uma expectativa neutra, e cada variável foi ajustando essa
+expectativa até chegar no resultado final."*
+
+### Exemplos reais do projeto — três casos comparados
+
+**Caso 1 — Acerto de fraude** (fraude real, corretamente identificada):
+
+![Waterfall de um acerto de fraude](./imagens/waterfall_acerto_fraude.png)
+
+Previsão final: `f(x) = 0.83`. As variáveis `V17`, `V14` e `V12` tinham valores bem
+negativos e extremos (-5.2, -5.2, -4.6) — exatamente o padrão que o modelo associa fortemente
+a fraude.
+
+**Caso 2 — Falso negativo** (fraude real, que o modelo não detectou):
+
+![Waterfall de um falso negativo](./imagens/waterfall_falso_negativo.png)
+
+Previsão final: `f(x) ≈ 0`. Todas as barras são azuis — nada empurrou para fraude. Repare que
+`V14 = -0.932` aqui é bem menos extremo que no caso de acerto — essa fraude não seguiu o
+padrão "óbvio" que o modelo aprendeu, por isso passou despercebida.
+
+**Caso 3 — Falso positivo** (transação normal, marcada como fraude por engano):
+
+![Waterfall de um falso positivo](./imagens/waterfall_falso_positivo.png)
+
+Previsão final: `f(x) = 0.6`. Aqui `V14 = -5.554` — um valor até mais extremo que o do acerto
+de fraude! Essa transação normal, por coincidência, teve um valor de V14 tão baixo quanto o
+de fraudes reais, o que confundiu o modelo.
+
+### O que essa comparação revela
+
+Colocando os três valores de `V14` lado a lado:
+
+| Caso | V14 | Resultado |
+|---|---|---|
+| Acerto de fraude | -5.208 | Detectado corretamente |
+| Falso negativo | -0.932 | Não detectado (valor pouco extremo) |
+| Falso positivo | -5.554 | Marcado como fraude (valor extremo, mas era normal) |
+
+Isso mostra que o modelo depende fortemente de `V14` estar muito negativo para "confiar" que
+é fraude — o que funciona bem quando a fraude realmente segue esse padrão extremo, mas falha
+tanto quando a fraude é mais "sutil" (falso negativo) quanto quando uma transação normal
+coincidentemente tem esse mesmo padrão (falso positivo).
+
+### Cuidado na interpretação
+
+O waterfall explica **um caso específico**, não deve ser generalizado para "toda fraude se
+comporta assim" — para conclusões gerais, o bar plot e o beeswarm continuam sendo as
+ferramentas certas. O waterfall serve para **investigar casos pontuais**, especialmente
+erros do modelo, entendendo o que levou àquela decisão específica.
+
+### Como gerar (Python / shap)
+
+```python
+shap_values_caso = explainer(X_test.iloc[[indice_do_caso]])
+shap.plots.waterfall(shap_values_caso[0, :, 1])  # [0, :, 1] = primeira linha, classe fraude
+```
+
+---
+
+*Próxima entrada: adicionar explicação de histograma, curva ROC ou Precision-Recall, assim
+que revisados no projeto.*
