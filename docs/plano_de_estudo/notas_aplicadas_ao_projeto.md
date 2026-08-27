@@ -273,6 +273,35 @@ especialmente em fraude, onde é preciso **justificar por que uma transação fo
 
 > É aqui que entra o **SHAP**: mostra quais variáveis mais pesaram em cada decisão do modelo.
 
+**Importância global (bar plot):** `V14`, `V12` e `V4` lideram como as variáveis mais
+influentes nas decisões do modelo, seguidas por `V3`, `V10`, `V11`, `V17`, `V7` e `V16`. As
+demais 24 variáveis, somadas, ainda representam uma fatia relevante — a decisão do modelo é
+distribuída, não concentrada numa única variável.
+
+**Direção do impacto (beeswarm):** valores **baixos** de `V14` e `V12` empurram fortemente a
+previsão para fraude; em `V4`, o padrão se inverte (valores altos empurram para fraude).
+
+**Casos individuais (waterfall) — comparando acerto, falso negativo e falso positivo:**
+
+| Caso | V14 | Resultado |
+|---|---|---|
+| Acerto de fraude | -5,208 | Detectado corretamente (f(x) = 0,83) |
+| Falso negativo | -0,932 | Não detectado (f(x) ≈ 0) — valor pouco extremo |
+| Falso positivo | -5,554 | Marcado como fraude (f(x) = 0,6) — era transação normal |
+
+**Insight principal:** o modelo depende fortemente de `V14` estar muito negativo para
+"confiar" que uma transação é fraude. Isso funciona bem quando a fraude segue esse padrão
+extremo (acerto), mas gera dois tipos de erro: fraudes mais "sutis" passam despercebidas
+(falso negativo), e transações normais que coincidentemente têm `V14` muito negativo são
+marcadas por engano (falso positivo).
+
+> ⚠️ Como `V1`-`V28` são componentes de PCA, a leitura é apenas estatística — sabemos que
+> "V14 baixo" está associado a fraude segundo o modelo, mas não sabemos o que V14 representa
+> no mundo real.
+
+(Ver [como_ler_graficos.md](./como_ler_graficos.md) para a explicação de como ler os
+gráficos de bar plot, beeswarm e waterfall.)
+
 ---
 
 ## 12. Comunicação dos resultados
