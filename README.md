@@ -103,19 +103,20 @@ O projeto segue um fluxo estruturado de análise de dados, documentado em detalh
 ```
 ├── src/
 │   ├── deteccao_fraude.py         # pipeline completo: EDA até o modelo final salvo
-│   └── interpretacao_shap.py      # carrega o modelo salvo e gera as explicações SHAP
+│   ├── interpretacao_shap.py      # carrega o modelo salvo e gera as explicações SHAP
+│   ├── exportar_powerbi.py        # código para exportação de arquivo csv
 ├── notebooks/
 │   └── aula_deteccao_fraude.py    # código original da aula (DIO), mantido como referência
 ├── models/
 │   └── modelo_fraude_final.pkl    # modelo treinado + scaler, prontos para uso
 ├── outputs/
-│   └── figures/                   # gráficos gerados pelo projeto
+│   └── dados_powerbi.csv                   # arquivo csv para dashboard 
 ├── docs/
 │   └── plano_de_estudo/
 │       ├── processo-de-estudo.md         # fluxo geral de análise de dados (genérico)
 │       ├── notas_aplicadas_ao_projeto.md # decisões e resultados específicos deste projeto
 │       ├── como_ler_graficos.md          # guia de leitura de cada gráfico usado
-│       └── imagens/
+│       └── imagens/                      # gráficos gerados do decorrer da análise
 └── README.md
 ```
 
