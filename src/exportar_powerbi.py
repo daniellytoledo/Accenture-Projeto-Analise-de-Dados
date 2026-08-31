@@ -79,5 +79,10 @@ df_powerbi["Custo"] = df_powerbi["Resultado"].map({
 # Garantindo que a pasta de saída existe, mesmo em outra máquina
 os.makedirs("outputs", exist_ok=True)
 
-df_powerbi.to_csv("outputs/dados_powerbi.csv", index=False)
+df_powerbi.to_csv(
+    "outputs/dados_powerbi.csv",
+    index=False,
+    sep=";",
+    decimal=","
+)
 print("Arquivo exportado:", df_powerbi.shape)
